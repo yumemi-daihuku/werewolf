@@ -213,7 +213,7 @@
     </div>
 
     <div id="night-action-card" class="card night-action hidden">
-      <h3 id="na-title">夜の行動</h3>
+      <h3 id="na-title">夜の行動 <span class="badge-count" id="na-timer">--:--</span></h3>
       <p class="hint" id="na-hint"></p>
       <div class="players-grid" id="na-targets"></div>
       <button id="na-confirm" class="small" style="margin-top:14px;" disabled>この者に決める</button>
@@ -221,7 +221,7 @@
     </div>
 
     <div id="vote-card" class="card hidden">
-      <h3>処刑の投票</h3>
+      <h3>処刑の投票 <span class="badge-count" id="vote-timer">--:--</span></h3>
       <p class="hint" style="color:var(--ash); font-size:.85rem;">村を追放する者を選べ。生存者の過半数で決する。</p>
       <div class="players-grid" id="vote-targets"></div>
       <button id="vote-confirm" class="small" style="margin-top:14px;" disabled>この者に投票する</button>
@@ -241,6 +241,10 @@
           <input type="text" id="chat-text" placeholder="発言する…" maxlength="200">
           <button id="chat-send">送信</button>
         </div>
+      </div>
+      <div id="end-discussion-row" class="hidden" style="margin-top:12px; display:flex; align-items:center; gap:10px;">
+        <button id="btn-end-discussion" class="ghost small">議論終了に賛成する</button>
+        <span class="small-note" id="end-discussion-status"></span>
       </div>
     </div>
 
@@ -509,7 +513,22 @@ function startTicker(){
   tickHandle = setInterval(()=>{
     if(!roomData || roomData.status!=="playing") return;
     const remain = (roomData.phaseEndTime||Date.now()) - Date.now();
-    el("ph-timer").textContent = fmtTime(remain);
+    const t = fmtTime(remain);
+    const urgent = remain <= 15000;
+    el("ph-timer").textContent = t;
+    el("ph-timer").style.color = urgent ? "var(--blood-bright)" : "";
+    if(roomData.phase==="vote"){
+      const vt = el("vote-timer");
+      vt.textContent = t;
+      vt.style.color = urgent ? "var(--blood-bright)" : "";
+      vt.style.borderColor = urgent ? "var(--blood-bright)" : "";
+    }
+    if(roomData.phase==="night"){
+      const nt = el("na-timer");
+      nt.textContent = t;
+      nt.style.color = urgent ? "var(--blood-bright)" : "";
+      nt.style.borderColor = urgent ? "var(--blood-bright)" : "";
+    }
     if(isHost && remain <= 0){ maybeAdvancePhase(); }
   }, 1000);
 }
@@ -542,7 +561,7 @@ function renderNightAction(me){
   document.querySelectorAll("#na-targets .player-chip").forEach(c=>{
     c.onclick = ()=>{ chosenTarget = c.getAttribute("data-uid"); el("na-confirm").disabled=false; renderNightAction(me); };
   });
-  el("na-status").textContent = already ? "選択を送信済み。夜明けを待て……" : "";
+  el("na-status").textContent = allNightActed() ? "全員の行動が揃った。まもなく夜が明ける……" : already ? "選択を送信済み。夜明けを待て……" : "";
   el("na-confirm").disabled = !chosenTarget || !!already;
 }
 el("na-confirm").onclick = async ()=>{
@@ -564,7 +583,7 @@ function renderVote(me){
   document.querySelectorAll("#vote-targets .player-chip").forEach(c=>{
     c.onclick = ()=>{ votedTarget = c.getAttribute("data-uid"); el("vote-confirm").disabled=false; renderVote(me); };
   });
-  el("vote-status").textContent = already ? "投票済み。開票を待て……" : "";
+  el("vote-status").textContent = allVoted() ? "全員の投票が揃った。まもなく開票される……" : already ? "投票済み。開票を待て……" : "";
   el("vote-confirm").disabled = !votedTarget || !!already;
 }
 el("vote-confirm").onclick = async ()=>{
@@ -588,9 +607,30 @@ function renderChat(){
   const canChat = roomData.phase==="day" || !me.alive; // 死者は常時ざわめける(亡霊チャット)
   el("chat-text").disabled = !canChat;
   el("chat-send").disabled = !canChat;
+
+  // 議論終了ボタン(昼フェーズ・生存者のみ)
+  const endRow = el("end-discussion-row");
+  if(roomData.phase==="day" && me.alive){
+    endRow.classList.remove("hidden");
+    const agrees = roomData.endDiscussion || {};
+    const aliveUids = Object.keys(players).filter(u=>players[u].alive);
+    const agreedCount = aliveUids.filter(u=>agrees[u]).length;
+    const already = !!agrees[myUid];
+    el("btn-end-discussion").disabled = false;
+    el("btn-end-discussion").textContent = already ? "賛成を取り消す" : "議論終了に賛成する";
+    el("end-discussion-status").textContent = `${agreedCount} / ${aliveUids.length} 人が賛成`;
+  } else {
+    endRow.classList.add("hidden");
+  }
 }
 el("chat-send").onclick = sendChat;
 el("chat-text").addEventListener("keydown", e=>{ if(e.key==="Enter") sendChat(); });
+el("btn-end-discussion").onclick = async ()=>{
+  const players = roomData.players||{};
+  const agrees = roomData.endDiscussion||{};
+  const already = !!agrees[myUid];
+  await roomRef.child(`endDiscussion/${myUid}`).set(already ? null : true);
+};
 async function sendChat(){
   const text = el("chat-text").value.trim();
   if(!text) return;
@@ -607,27 +647,53 @@ function renderLog(){
   el("game-log").scrollTop = el("game-log").scrollHeight;
 }
 
+function allVoted(){
+  const players = roomData.players||{};
+  const alive = Object.keys(players).filter(u=>players[u].alive);
+  const votes = roomData.votes||{};
+  return alive.length>0 && alive.every(u=>!!votes[u]);
+}
+function allNightActed(){
+  const players = roomData.players||{};
+  const needed = Object.keys(players).filter(u=>players[u].alive && ["wolf","seer","hunter"].includes(players[u].role));
+  const actions = roomData.nightActions||{};
+  return needed.length>0 && needed.every(u=>!!actions[u]);
+}
+function allAgreedEndDiscussion(){
+  const players = roomData.players||{};
+  const alive = Object.keys(players).filter(u=>players[u].alive);
+  const agrees = roomData.endDiscussion||{};
+  return alive.length>0 && alive.every(u=>!!agrees[u]);
+}
+
 // ---------- ホスト専用: フェーズ進行の解決 ----------
 async function maybeAdvancePhase(){
-  // ロック取得(競合防止)
+  const phase = roomData.phase;
+  const remain = (roomData.phaseEndTime||0) - Date.now();
+  const timeUp = remain <= 0;
+
+  let earlyOk = false;
+  if(phase==="vote") earlyOk = allVoted();
+  else if(phase==="night") earlyOk = allNightActed();
+  else if(phase==="day") earlyOk = allAgreedEndDiscussion();
+
+  if(!timeUp && !earlyOk) return;
+
+  // ロック取得(競合防止・短時間の多重発火を防ぐ)
   const lockRef = roomRef.child("lock");
   const txResult = await lockRef.transaction(cur=>{
-    if(cur && Date.now()-cur < 4000) return; // 直近処理中なら中断
+    if(cur && Date.now()-cur < 2000) return; // 直近処理中なら中断
     return Date.now();
   });
   if(!txResult.committed) return;
 
-  const remain = (roomData.phaseEndTime||0) - Date.now();
-  if(remain > 0) return;
-
-  const phase = roomData.phase;
   if(phase==="day"){ await goToVote(); }
   else if(phase==="vote"){ await resolveVote(); }
   else if(phase==="night"){ await resolveNight(); }
 }
 
 async function goToVote(){
-  await roomRef.update({ phase:"vote", phaseEndTime: Date.now()+VOTE_MS, votes:null });
+  await roomRef.update({ phase:"vote", phaseEndTime: Date.now()+VOTE_MS, votes:null, endDiscussion:null });
   await roomRef.child("log").push({ text:"議論は終わった。処刑の投票を始める。", ts:Date.now(), type:"sys" });
 }
 
@@ -751,7 +817,7 @@ el("btn-back-lobby").onclick = async ()=>{
   const players = roomData.players||{};
   const resetPlayers = {};
   Object.entries(players).forEach(([uid,p])=>{ resetPlayers[uid] = { name:p.name, alive:true }; });
-  await roomRef.update({ status:"lobby", phase:"lobby", players: resetPlayers, log:null, chat:null, nightActions:null, votes:null, winner:null, day:0 });
+  await roomRef.update({ status:"lobby", phase:"lobby", players: resetPlayers, log:null, chat:null, nightActions:null, votes:null, endDiscussion:null, winner:null, day:0 });
 };
 
 function escapeHtml(s){
