@@ -189,7 +189,8 @@
     <div class="players-grid" id="lobby-players"></div>
 
     <div id="host-controls" class="hidden" style="margin-top:20px; border-top:1px solid var(--border); padding-top:16px;">
-      <label>役職構成(自動割り当て・10人以上推奨)</label>
+      <h3 style="font-size:1rem;">役職構成(自由設定)</h3>
+      <div id="role-count-grid" style="display:grid; grid-template-columns:repeat(auto-fill,minmax(160px,1fr)); gap:10px; margin-bottom:8px;"></div>
       <p class="small-note" id="roleset-preview"></p>
       <button id="btn-start" style="width:100%; margin-top:10px;">夜を始める(ゲーム開始)</button>
       <p class="small-note" id="start-warning" style="color:var(--blood-bright);"></p>
@@ -345,11 +346,52 @@ function buildRoleset(n){
   list = list.slice(0,n);
   return list;
 }
-function roleCountsText(n){
+const SPECIAL_ROLE_KEYS = ["wolf","seer","medium","hunter","madman","fox"];
+let roleCounts = null; // { wolf:2, seer:1, ... } villagerは残り人数から自動計算
+
+function defaultRoleCounts(n){
   const list = buildRoleset(n);
-  const cnt = {};
-  list.forEach(r=>cnt[r]=(cnt[r]||0)+1);
-  return Object.entries(cnt).map(([k,v])=>`${ROLES[k].name}×${v}`).join(" / ");
+  const cnt = {}; SPECIAL_ROLE_KEYS.forEach(k=>cnt[k]=0);
+  list.forEach(r=>{ if(cnt[r]!==undefined) cnt[r]++; });
+  return cnt;
+}
+function roleCountsSum(cnt){ return SPECIAL_ROLE_KEYS.reduce((s,k)=>s+(cnt[k]||0),0); }
+
+function renderRoleCountGrid(n){
+  if(!roleCounts) roleCounts = defaultRoleCounts(n);
+  const grid = el("role-count-grid");
+  if(!grid.dataset.built){
+    grid.innerHTML = SPECIAL_ROLE_KEYS.map(k=>`
+      <div>
+        <label>${ROLES[k].name}</label>
+        <input type="number" min="0" max="${n}" value="${roleCounts[k]||0}" data-role="${k}" class="role-count-input">
+      </div>
+    `).join("");
+    grid.dataset.built = "1";
+    grid.querySelectorAll(".role-count-input").forEach(inp=>{
+      inp.addEventListener("input", ()=>{
+        const k = inp.getAttribute("data-role");
+        roleCounts[k] = Math.max(0, parseInt(inp.value||"0",10));
+        updateRolesetPreview(n);
+      });
+    });
+  }
+  updateRolesetPreview(n);
+}
+function updateRolesetPreview(n){
+  const sum = roleCountsSum(roleCounts);
+  const villagers = n - sum;
+  const wolves = roleCounts.wolf||0;
+  const parts = SPECIAL_ROLE_KEYS.filter(k=>roleCounts[k]>0).map(k=>`${ROLES[k].name}×${roleCounts[k]}`);
+  if(villagers>0) parts.push(`村人×${villagers}`);
+  el("roleset-preview").textContent = "構成案: "+(parts.join(" / ")||"(なし)");
+
+  let warn = "";
+  if(n<5) warn = `あと${5-n}人必要です。`;
+  else if(sum>n) warn = "特殊役職の合計人数がプレイヤー数を超えています。";
+  else if(wolves<1) warn = "人狼は最低1人必要です。";
+  el("start-warning").textContent = warn;
+  el("btn-start").disabled = !!warn;
 }
 
 // ---------- 画面: 接続 ----------
@@ -425,9 +467,7 @@ function renderLobby(){
 
   if(isHost){
     show("host-controls"); hide("lobby-wait");
-    el("roleset-preview").textContent = uids.length>=5 ? "構成案: "+roleCountsText(uids.length) : "5人以上でゲームを開始できます。";
-    el("btn-start").disabled = uids.length < 5;
-    el("start-warning").textContent = uids.length<5 ? `あと${5-uids.length}人必要です。` : "";
+    renderRoleCountGrid(uids.length);
   } else {
     hide("host-controls"); show("lobby-wait");
   }
@@ -435,7 +475,12 @@ function renderLobby(){
 el("btn-start").onclick = async ()=>{
   const players = roomData.players || {};
   const uids = Object.keys(players);
-  const roleset = buildRoleset(uids.length);
+  const n = uids.length;
+  const cnt = roleCounts || defaultRoleCounts(n);
+  let roleset = [];
+  SPECIAL_ROLE_KEYS.forEach(k=>{ for(let i=0;i<(cnt[k]||0);i++) roleset.push(k); });
+  const villagers = n - roleset.length;
+  for(let i=0;i<villagers;i++) roleset.push("villager");
   // シャッフル
   for(let i=roleset.length-1;i>0;i--){ const j=Math.floor(Math.random()*(i+1)); [roleset[i],roleset[j]]=[roleset[j],roleset[i]]; }
   const updates = {};
@@ -817,6 +862,8 @@ el("btn-back-lobby").onclick = async ()=>{
   const players = roomData.players||{};
   const resetPlayers = {};
   Object.entries(players).forEach(([uid,p])=>{ resetPlayers[uid] = { name:p.name, alive:true }; });
+  roleCounts = null;
+  el("role-count-grid").dataset.built = "";
   await roomRef.update({ status:"lobby", phase:"lobby", players: resetPlayers, log:null, chat:null, nightActions:null, votes:null, endDiscussion:null, winner:null, day:0 });
 };
 
