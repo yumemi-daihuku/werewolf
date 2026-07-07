@@ -348,6 +348,7 @@ function buildRoleset(n){
 }
 const SPECIAL_ROLE_KEYS = ["wolf","seer","medium","hunter","madman","fox"];
 let roleCounts = null; // { wolf:2, seer:1, ... } villagerは残り人数から自動計算
+let currentLobbyN = 0;
 
 function defaultRoleCounts(n){
   const list = buildRoleset(n);
@@ -372,10 +373,21 @@ function renderRoleCountGrid(n){
       inp.addEventListener("input", ()=>{
         const k = inp.getAttribute("data-role");
         roleCounts[k] = Math.max(0, parseInt(inp.value||"0",10));
-        updateRolesetPreview(n);
+        updateRolesetPreview(currentLobbyN);
       });
     });
+  } else {
+    // 人数変動に合わせてmax属性と値の上限を追従させる
+    grid.querySelectorAll(".role-count-input").forEach(inp=>{
+      inp.setAttribute("max", n);
+      const k = inp.getAttribute("data-role");
+      if((roleCounts[k]||0) > n){
+        roleCounts[k] = n;
+        inp.value = n;
+      }
+    });
   }
+  currentLobbyN = n;
   updateRolesetPreview(n);
 }
 function updateRolesetPreview(n){
