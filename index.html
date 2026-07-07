@@ -1,0 +1,761 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>人狼の夜 -Wolf's Hollow-</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Yuji+Syuku&family=Shippori+Mincho:wght@400;500;600;700&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --void:#0a0908;
+    --night:#12100e;
+    --panel:#1a1613;
+    --panel-2:#211c18;
+    --border:#3a2f26;
+    --gold:#c9a15a;
+    --gold-dim:#8a6f42;
+    --blood:#7a1f1f;
+    --blood-bright:#b02e2e;
+    --moon:#e8dcc0;
+    --ash:#a89a86;
+    --wolf:#8b3a3a;
+    --village:#4a6b4f;
+    --fox:#a8672f;
+    --shadow: rgba(0,0,0,0.6);
+  }
+  *{box-sizing:border-box;}
+  html,body{margin:0;padding:0;}
+  body{
+    background:
+      radial-gradient(ellipse at 20% -10%, rgba(201,161,90,0.06), transparent 50%),
+      radial-gradient(ellipse at 80% 110%, rgba(122,31,31,0.08), transparent 50%),
+      var(--void);
+    color:var(--moon);
+    font-family:'Shippori Mincho', serif;
+    min-height:100vh;
+    position:relative;
+    overflow-x:hidden;
+  }
+  body::before{
+    content:"";
+    position:fixed; inset:0; pointer-events:none; z-index:0;
+    background-image:
+      radial-gradient(1px 1px at 10% 20%, rgba(232,220,192,0.5), transparent),
+      radial-gradient(1px 1px at 30% 70%, rgba(232,220,192,0.3), transparent),
+      radial-gradient(1px 1px at 50% 15%, rgba(232,220,192,0.4), transparent),
+      radial-gradient(1px 1px at 70% 45%, rgba(232,220,192,0.3), transparent),
+      radial-gradient(1px 1px at 90% 80%, rgba(232,220,192,0.4), transparent),
+      radial-gradient(1px 1px at 15% 90%, rgba(232,220,192,0.3), transparent),
+      radial-gradient(1px 1px at 85% 25%, rgba(232,220,192,0.4), transparent);
+    background-size:100% 100%;
+    animation: twinkle 6s ease-in-out infinite alternate;
+  }
+  @keyframes twinkle{ from{opacity:.5;} to{opacity:1;} }
+  .wrap{ position:relative; z-index:1; max-width:960px; margin:0 auto; padding:28px 18px 80px; }
+
+  h1,h2,h3{ font-family:'Yuji Syuku', serif; font-weight:400; letter-spacing:.04em; color:var(--gold); margin:0 0 6px; }
+  h1{ font-size:2.1rem; text-align:center; text-shadow:0 0 18px rgba(201,161,90,0.35); }
+  .subtitle{ text-align:center; color:var(--ash); font-size:.85rem; letter-spacing:.2em; margin-bottom:28px; }
+
+  .card{
+    background:linear-gradient(160deg, var(--panel), var(--panel-2));
+    border:1px solid var(--border);
+    border-radius:4px;
+    padding:22px;
+    position:relative;
+    box-shadow:0 10px 30px var(--shadow), inset 0 1px 0 rgba(255,255,255,0.02);
+  }
+  .card::before{
+    content:""; position:absolute; inset:0; border:1px solid rgba(201,161,90,0.08); border-radius:4px; pointer-events:none;
+  }
+  .card + .card{ margin-top:18px; }
+
+  label{ display:block; font-size:.8rem; color:var(--ash); margin-bottom:6px; letter-spacing:.05em; }
+  input[type=text], select, input[type=number]{
+    width:100%; background:var(--void); border:1px solid var(--border); color:var(--moon);
+    padding:11px 12px; border-radius:3px; font-family:inherit; font-size:1rem; margin-bottom:14px;
+  }
+  input:focus, select:focus{ outline:none; border-color:var(--gold-dim); }
+
+  button{
+    font-family:'Shippori Mincho', serif; font-size:.95rem; letter-spacing:.05em;
+    background:linear-gradient(180deg, var(--blood-bright), var(--blood));
+    color:#f4e9d8; border:1px solid #4a1414; padding:12px 20px; border-radius:3px;
+    cursor:pointer; transition:transform .15s, box-shadow .15s; box-shadow:0 4px 12px rgba(122,31,31,0.3);
+  }
+  button:hover{ transform:translateY(-1px); box-shadow:0 6px 16px rgba(122,31,31,0.45); }
+  button:active{ transform:translateY(0); }
+  button:disabled{ opacity:.4; cursor:not-allowed; transform:none; }
+  button.ghost{ background:transparent; border:1px solid var(--gold-dim); color:var(--gold); box-shadow:none; }
+  button.ghost:hover{ background:rgba(201,161,90,0.08); }
+  button.small{ padding:7px 12px; font-size:.82rem; }
+  .row{ display:flex; gap:10px; flex-wrap:wrap; }
+  .row > *{ flex:1; }
+
+  .hidden{ display:none !important; }
+
+  .roomcode{ font-family:'Yuji Syuku',serif; letter-spacing:.3em; font-size:1.6rem; color:var(--gold); text-align:center; padding:14px; border:1px dashed var(--gold-dim); border-radius:4px; margin-bottom:16px; }
+
+  .players-grid{ display:grid; grid-template-columns:repeat(auto-fill,minmax(140px,1fr)); gap:10px; margin-top:10px; }
+  .player-chip{
+    background:var(--void); border:1px solid var(--border); border-radius:4px; padding:10px; text-align:center; position:relative;
+    transition:border-color .2s;
+  }
+  .player-chip.dead{ opacity:.35; }
+  .player-chip.dead::after{ content:"✝"; position:absolute; top:4px; right:8px; color:var(--blood-bright); }
+  .player-chip.me{ border-color:var(--gold-dim); }
+  .player-chip .nm{ font-size:.92rem; }
+  .player-chip .tag{ font-size:.7rem; color:var(--ash); margin-top:3px; }
+  .player-chip.selectable{ cursor:pointer; }
+  .player-chip.selectable:hover{ border-color:var(--blood-bright); }
+  .player-chip.chosen{ border-color:var(--gold); box-shadow:0 0 0 1px var(--gold), 0 0 14px rgba(201,161,90,0.3); }
+
+  .phase-banner{
+    text-align:center; padding:16px; margin-bottom:16px; border-radius:4px; position:relative; overflow:hidden;
+  }
+  .phase-banner.day{ background:linear-gradient(135deg, rgba(74,107,79,0.18), rgba(74,107,79,0.04)); border:1px solid rgba(74,107,79,0.4); }
+  .phase-banner.night{ background:linear-gradient(135deg, rgba(30,30,60,0.35), rgba(10,10,20,0.2)); border:1px solid rgba(90,90,140,0.3); }
+  .phase-banner.vote{ background:linear-gradient(135deg, rgba(122,31,31,0.22), rgba(122,31,31,0.05)); border:1px solid rgba(122,31,31,0.4); }
+  .phase-banner .ph-title{ font-family:'Yuji Syuku',serif; font-size:1.3rem; color:var(--gold); }
+  .phase-banner .ph-timer{ font-size:1.8rem; color:var(--moon); margin-top:4px; font-variant-numeric:tabular-nums; }
+  .phase-banner .ph-day{ color:var(--ash); font-size:.8rem; letter-spacing:.15em; }
+
+  .role-reveal{
+    text-align:center; padding:26px; border:1px solid var(--gold-dim); border-radius:6px;
+    background:radial-gradient(ellipse at center, rgba(201,161,90,0.08), transparent 70%);
+  }
+  .role-reveal .role-name{ font-family:'Yuji Syuku',serif; font-size:2.4rem; margin:8px 0; }
+  .role-reveal .role-team{ display:inline-block; padding:3px 14px; border-radius:20px; font-size:.78rem; letter-spacing:.1em; margin-bottom:12px; }
+  .team-village{ background:rgba(74,107,79,0.25); color:#a8c9ad; border:1px solid var(--village); }
+  .team-wolf{ background:rgba(139,58,58,0.25); color:#e0a3a3; border:1px solid var(--wolf); }
+  .team-fox{ background:rgba(168,103,47,0.25); color:#e0b783; border:1px solid var(--fox); }
+  .role-desc{ color:var(--ash); font-size:.9rem; line-height:1.7; max-width:480px; margin:0 auto; }
+
+  .log{ max-height:220px; overflow-y:auto; font-size:.85rem; color:var(--ash); border-top:1px solid var(--border); margin-top:14px; padding-top:10px; }
+  .log p{ margin:4px 0; }
+  .log .sys{ color:var(--gold-dim); }
+  .log .death{ color:var(--blood-bright); }
+
+  .chat-box{ display:flex; flex-direction:column; height:280px; border:1px solid var(--border); border-radius:4px; background:var(--void); }
+  .chat-msgs{ flex:1; overflow-y:auto; padding:10px; font-size:.88rem; }
+  .chat-msgs .msg{ margin-bottom:6px; }
+  .chat-msgs .msg .who{ color:var(--gold); margin-right:6px; }
+  .chat-msgs .msg.dead-msg .who{ color:var(--blood-bright); }
+  .chat-input{ display:flex; border-top:1px solid var(--border); }
+  .chat-input input{ flex:1; margin:0; border:none; border-radius:0; background:transparent; }
+  .chat-input button{ border:none; border-radius:0; background:var(--panel-2); color:var(--gold); box-shadow:none; }
+
+  .night-action{ text-align:center; padding:10px 0; }
+  .night-action p.hint{ color:var(--ash); font-size:.85rem; margin-bottom:12px; }
+
+  .result-banner{ text-align:center; padding:40px 20px; }
+  .result-banner .win-team{ font-family:'Yuji Syuku',serif; font-size:2.6rem; margin:10px 0; }
+
+  #screen-connect .flavor{ color:var(--ash); text-align:center; font-size:.85rem; margin-bottom:22px; line-height:1.8; }
+  .small-note{ font-size:.75rem; color:var(--gold-dim); margin-top:8px; }
+  .badge-count{ display:inline-block; background:var(--void); border:1px solid var(--border); padding:2px 8px; border-radius:10px; font-size:.75rem; color:var(--ash); }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <h1>人狼の夜 <span style="font-size:.5em; color:var(--ash);">-Wolf's Hollow-</span></h1>
+  <div class="subtitle">CLOSE YOUR EYES &nbsp;・&nbsp; THE VILLAGE SLEEPS &nbsp;・&nbsp; SOMETHING WATCHES</div>
+
+  <!-- ============ 接続画面 ============ -->
+  <div id="screen-connect" class="card">
+    <p class="flavor">満月の晩、村に人狼が紛れ込んだ。<br>朝が来るたび誰かが消え、夜が来るたび誰かが牙を研ぐ。<br>あなたは生き残れるか——それとも、狩る側か。</p>
+    <label>プレイヤー名</label>
+    <input type="text" id="input-name" placeholder="村人としての名前" maxlength="12">
+
+    <div class="row">
+      <div>
+        <label>新しい部屋を作る</label>
+        <button id="btn-create" style="width:100%;">部屋を作成する</button>
+      </div>
+      <div>
+        <label>合言葉(部屋コード)で参加</label>
+        <input type="text" id="input-code" placeholder="例: WOLF42" maxlength="8" style="text-transform:uppercase;">
+        <button id="btn-join" class="ghost" style="width:100%;">参加する</button>
+      </div>
+    </div>
+    <p id="connect-error" class="small-note" style="color:var(--blood-bright);"></p>
+  </div>
+
+  <!-- ============ ロビー画面 ============ -->
+  <div id="screen-lobby" class="card hidden">
+    <div class="roomcode" id="lobby-code">----</div>
+    <h3>集いし者たち <span class="badge-count" id="lobby-count">0人</span></h3>
+    <div class="players-grid" id="lobby-players"></div>
+
+    <div id="host-controls" class="hidden" style="margin-top:20px; border-top:1px solid var(--border); padding-top:16px;">
+      <label>役職構成(自動割り当て・10人以上推奨)</label>
+      <p class="small-note" id="roleset-preview"></p>
+      <button id="btn-start" style="width:100%; margin-top:10px;">夜を始める(ゲーム開始)</button>
+      <p class="small-note" id="start-warning" style="color:var(--blood-bright);"></p>
+    </div>
+    <p id="lobby-wait" class="small-note">ホストの開始を待っています…</p>
+  </div>
+
+  <!-- ============ ゲーム画面 ============ -->
+  <div id="screen-game" class="hidden">
+
+    <div id="phase-banner" class="phase-banner day">
+      <div class="ph-day" id="ph-day-label">DAY 1</div>
+      <div class="ph-title" id="ph-title">議論の刻</div>
+      <div class="ph-timer" id="ph-timer">--:--</div>
+    </div>
+
+    <div id="role-reveal-card" class="card role-reveal hidden">
+      <div class="role-team" id="rr-team"></div>
+      <div class="role-name" id="rr-name"></div>
+      <div class="role-desc" id="rr-desc"></div>
+    </div>
+
+    <div id="night-action-card" class="card night-action hidden">
+      <h3 id="na-title">夜の行動</h3>
+      <p class="hint" id="na-hint"></p>
+      <div class="players-grid" id="na-targets"></div>
+      <button id="na-confirm" class="small" style="margin-top:14px;" disabled>この者に決める</button>
+      <p class="small-note" id="na-status"></p>
+    </div>
+
+    <div id="vote-card" class="card hidden">
+      <h3>処刑の投票</h3>
+      <p class="hint" style="color:var(--ash); font-size:.85rem;">村を追放する者を選べ。生存者の過半数で決する。</p>
+      <div class="players-grid" id="vote-targets"></div>
+      <button id="vote-confirm" class="small" style="margin-top:14px;" disabled>この者に投票する</button>
+      <p class="small-note" id="vote-status"></p>
+    </div>
+
+    <div class="card">
+      <h3>村の生存者 <span class="badge-count" id="alive-count"></span></h3>
+      <div class="players-grid" id="game-players"></div>
+    </div>
+
+    <div class="card">
+      <h3>議場(昼のみ発言可)</h3>
+      <div class="chat-box">
+        <div class="chat-msgs" id="chat-msgs"></div>
+        <div class="chat-input">
+          <input type="text" id="chat-text" placeholder="発言する…" maxlength="200">
+          <button id="chat-send">送信</button>
+        </div>
+      </div>
+    </div>
+
+    <div class="card">
+      <h3>記録の書</h3>
+      <div class="log" id="game-log"></div>
+    </div>
+  </div>
+
+  <!-- ============ 結果画面 ============ -->
+  <div id="screen-result" class="card result-banner hidden">
+    <div class="ph-day">GAME SET</div>
+    <div class="win-team" id="result-team"></div>
+    <p class="role-desc" id="result-desc"></p>
+    <div class="players-grid" id="result-players" style="margin-top:20px;"></div>
+    <button id="btn-back-lobby" class="ghost" style="margin-top:20px;">ロビーへ戻る</button>
+  </div>
+
+</div>
+
+<script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-auth-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-database-compat.js"></script>
+<script>
+/* =====================================================================
+   人狼の夜 -Wolf's Hollow-
+   Firebase Realtime Database を使用。
+   既存プロジェクト(tanipedia)を流用する場合、下記 firebaseConfig を
+   そのまま同じ内容にしてください(Tanipediaで使っているものと同一でOK)。
+   DBパスは /werewolf_rooms 配下のみを使用するため、既存データ
+   (/pages 等)とは一切干渉しません。
+   ===================================================================== */
+const firebaseConfig = {
+  apiKey: "YOUR_API_KEY",
+  authDomain: "tanipedia-3a6ea.firebaseapp.com",
+  databaseURL: "https://tanipedia-3a6ea-default-rtdb.asia-southeast1.firebasedatabase.app",
+  projectId: "tanipedia-3a6ea",
+  storageBucket: "tanipedia-3a6ea.appspot.com",
+  messagingSenderId: "YOUR_SENDER_ID",
+  appId: "YOUR_APP_ID"
+};
+firebase.initializeApp(firebaseConfig);
+const auth = firebase.auth();
+const db = firebase.database();
+const ROOT = "werewolf_rooms";
+
+// ---------- 役職定義 ----------
+const ROLES = {
+  villager:  { name:"村人",   team:"village", desc:"特殊な力は持たない。議論と観察だけが武器。村の勝利を目指せ。" },
+  wolf:      { name:"人狼",   team:"wolf",    desc:"夜ごと1人を選び喰らう。正体を隠し通し、村人を数で上回れ。" },
+  seer:      { name:"占い師", team:"village", desc:"毎晩1人を占い、人狼か否かを見抜く。慎重に真実を伝えよ。" },
+  medium:    { name:"霊媒師", team:"village", desc:"処刑された者が人狼だったか、翌朝に知ることができる。" },
+  hunter:    { name:"狩人",   team:"village", desc:"毎晩1人を人狼の襲撃から守る。自分自身は守れない。" },
+  madman:    { name:"狂人",   team:"wolf",    desc:"人狼の勝利を望むが、誰が人狼かは知らない。占いには村人と出る。" },
+  fox:       { name:"妖狐",   team:"fox",     desc:"人狼に襲われても死なない独立陣営。ただし占い師に占われると呪われ死ぬ。人狼が全滅すれば独り勝ちする。" }
+};
+
+const DAY_MS   = 3*60*1000;
+const VOTE_MS  = 60*1000;
+const NIGHT_MS = 90*1000;
+const RESULT_MS= 20*1000;
+
+let myUid = null, myName = null, roomId = null, roomRef = null, isHost = false;
+let roomData = null, tickHandle = null, chosenTarget = null, votedTarget = null;
+
+// ---------- 認証 ----------
+auth.signInAnonymously().catch(e=>console.error(e));
+auth.onAuthStateChanged(u=>{ if(u) myUid = u.uid; });
+
+// ---------- ユーティリティ ----------
+function genCode(){
+  const chars="ABCDEFGHJKLMNPQRSTUVWXYZ23456789";
+  let s=""; for(let i=0;i<5;i++) s+=chars[Math.floor(Math.random()*chars.length)];
+  return "W"+s;
+}
+function fmtTime(ms){
+  if(ms<0) ms=0;
+  const s=Math.floor(ms/1000);
+  return String(Math.floor(s/60)).padStart(2,"0")+":"+String(s%60).padStart(2,"0");
+}
+function show(id){ document.getElementById(id).classList.remove("hidden"); }
+function hide(id){ document.getElementById(id).classList.add("hidden"); }
+function el(id){ return document.getElementById(id); }
+
+// ---------- 役職セット生成(人数に応じ自動調整) ----------
+function buildRoleset(n){
+  // 妥当な比率: 人狼 = floor(n/4.5) 目安、狂人1(6人以上)、妖狐1(9人以上)、占い師/霊媒師/狩人固定枠
+  let wolves = Math.max(2, Math.round(n/4));
+  let list = [];
+  list.push("seer");
+  if(n>=6) list.push("medium");
+  if(n>=5) list.push("hunter");
+  if(n>=6) list.push("madman");
+  if(n>=9) list.push("fox");
+  for(let i=0;i<wolves;i++) list.push("wolf");
+  while(list.length < n) list.push("villager");
+  list = list.slice(0,n);
+  return list;
+}
+function roleCountsText(n){
+  const list = buildRoleset(n);
+  const cnt = {};
+  list.forEach(r=>cnt[r]=(cnt[r]||0)+1);
+  return Object.entries(cnt).map(([k,v])=>`${ROLES[k].name}×${v}`).join(" / ");
+}
+
+// ---------- 画面: 接続 ----------
+el("btn-create").onclick = async ()=>{
+  const name = el("input-name").value.trim();
+  if(!name){ el("connect-error").textContent="名前を入力してください。"; return; }
+  myName = name;
+  const code = genCode();
+  roomId = code;
+  roomRef = db.ref(`${ROOT}/${roomId}`);
+  await waitAuth();
+  const initData = {
+    host: myUid,
+    status: "lobby",
+    createdAt: firebase.database.ServerValue.TIMESTAMP,
+    players: { [myUid]: { name: myName, alive:true, joinedAt: firebase.database.ServerValue.TIMESTAMP } },
+    phase: "lobby", day:0, log:{}, chat:{}
+  };
+  await roomRef.set(initData);
+  enterRoom();
+};
+el("btn-join").onclick = async ()=>{
+  const name = el("input-name").value.trim();
+  const code = el("input-code").value.trim().toUpperCase();
+  if(!name){ el("connect-error").textContent="名前を入力してください。"; return; }
+  if(!code){ el("connect-error").textContent="部屋コードを入力してください。"; return; }
+  await waitAuth();
+  const ref = db.ref(`${ROOT}/${code}`);
+  const snap = await ref.get();
+  if(!snap.exists()){ el("connect-error").textContent="その部屋は存在しません。"; return; }
+  const data = snap.val();
+  if(data.status !== "lobby"){ el("connect-error").textContent="このゲームはすでに開始されています。"; return; }
+  myName = name; roomId = code; roomRef = ref;
+  await roomRef.child(`players/${myUid}`).set({ name: myName, alive:true, joinedAt: firebase.database.ServerValue.TIMESTAMP });
+  enterRoom();
+};
+function waitAuth(){
+  return new Promise(res=>{
+    if(myUid) return res();
+    const iv = setInterval(()=>{ if(myUid){ clearInterval(iv); res(); } }, 100);
+  });
+}
+
+// ---------- 部屋入室後: リアルタイム監視開始 ----------
+function enterRoom(){
+  hide("screen-connect");
+  roomRef.on("value", snap=>{
+    roomData = snap.val();
+    if(!roomData) return;
+    isHost = (roomData.host === myUid);
+    render();
+  });
+}
+
+// ---------- メイン描画振り分け ----------
+function render(){
+  if(roomData.status === "lobby"){ renderLobby(); }
+  else if(roomData.status === "playing"){ hide("screen-lobby"); hide("screen-result"); show("screen-game"); renderGame(); }
+  else if(roomData.status === "ended"){ hide("screen-lobby"); hide("screen-game"); show("screen-result"); renderResult(); }
+}
+
+// ---------- ロビー ----------
+function renderLobby(){
+  hide("screen-game"); hide("screen-result"); show("screen-lobby");
+  el("lobby-code").textContent = roomId;
+  const players = roomData.players || {};
+  const uids = Object.keys(players);
+  el("lobby-count").textContent = uids.length+"人";
+  el("lobby-players").innerHTML = uids.map(uid=>{
+    const p = players[uid];
+    return `<div class="player-chip ${uid===myUid?'me':''}"><div class="nm">${escapeHtml(p.name)}${uid===roomData.host?' 👑':''}</div></div>`;
+  }).join("");
+
+  if(isHost){
+    show("host-controls"); hide("lobby-wait");
+    el("roleset-preview").textContent = uids.length>=5 ? "構成案: "+roleCountsText(uids.length) : "5人以上でゲームを開始できます。";
+    el("btn-start").disabled = uids.length < 5;
+    el("start-warning").textContent = uids.length<5 ? `あと${5-uids.length}人必要です。` : "";
+  } else {
+    hide("host-controls"); show("lobby-wait");
+  }
+}
+el("btn-start").onclick = async ()=>{
+  const players = roomData.players || {};
+  const uids = Object.keys(players);
+  const roleset = buildRoleset(uids.length);
+  // シャッフル
+  for(let i=roleset.length-1;i>0;i--){ const j=Math.floor(Math.random()*(i+1)); [roleset[i],roleset[j]]=[roleset[j],roleset[i]]; }
+  const updates = {};
+  uids.forEach((uid,i)=>{
+    updates[`players/${uid}/role`] = roleset[i];
+    updates[`players/${uid}/alive`] = true;
+  });
+  updates["status"] = "playing";
+  updates["phase"] = "day";
+  updates["day"] = 1;
+  updates["phaseEndTime"] = firebase.database.ServerValue.TIMESTAMP;
+  updates["log/start"] = { text:"満月が昇り、村に恐怖の一夜が始まった……。", ts: firebase.database.ServerValue.TIMESTAMP, type:"sys" };
+  await roomRef.update(updates);
+  // phaseEndTimeを実時刻+DAY_MSにするため直後に補正
+  const now = Date.now();
+  await roomRef.update({ phaseEndTime: now + DAY_MS });
+};
+
+// ---------- ゲーム進行(タイマー監視) ----------
+function renderGame(){
+  const players = roomData.players || {};
+  const me = players[myUid] || {};
+  const phase = roomData.phase;
+  const day = roomData.day || 1;
+
+  // フェーズバナー
+  const banner = el("phase-banner");
+  banner.className = "phase-banner " + (phase==="night" ? "night" : phase==="vote" ? "vote" : "day");
+  el("ph-day-label").textContent = "DAY "+day;
+  el("ph-title").textContent = phase==="day" ? "議論の刻" : phase==="vote" ? "投票の刻" : "夜の帳";
+
+  startTicker();
+
+  // 役職公開(初回のみ表示、常時見られるように残す)
+  if(me.role){
+    const r = ROLES[me.role];
+    show("role-reveal-card");
+    el("rr-team").className = "role-team team-"+r.team;
+    el("rr-team").textContent = r.team==="village"?"村人陣営":r.team==="wolf"?"人狼陣営":"独立陣営";
+    el("rr-name").textContent = r.name;
+    el("rr-desc").textContent = r.desc;
+  }
+
+  // 生存者一覧
+  const uids = Object.keys(players);
+  const aliveUids = uids.filter(u=>players[u].alive);
+  el("alive-count").textContent = aliveUids.length+"人生存";
+  el("game-players").innerHTML = uids.map(uid=>{
+    const p = players[uid];
+    let tag = "";
+    if(!p.alive) tag = "力尽きた";
+    else if(uid===myUid) tag = ROLES[p.role] ? ROLES[p.role].name : "";
+    return `<div class="player-chip ${p.alive?'':'dead'} ${uid===myUid?'me':''}">
+      <div class="nm">${escapeHtml(p.name)}${uid===roomData.host?' 👑':''}</div>
+      <div class="tag">${tag}</div>
+    </div>`;
+  }).join("");
+
+  // チャット
+  renderChat();
+  // ログ
+  renderLog();
+
+  // 夜アクション / 投票 UI
+  if(phase==="night" && me.alive){ renderNightAction(me); } else { hide("night-action-card"); }
+  if(phase==="vote" && me.alive){ renderVote(me); } else { hide("vote-card"); }
+  if(phase==="day"){ hide("night-action-card"); hide("vote-card"); }
+
+  // ホストのみ: フェーズ終了時の解決処理を監視
+  if(isHost){ maybeAdvancePhase(); }
+}
+
+function startTicker(){
+  if(tickHandle) return;
+  tickHandle = setInterval(()=>{
+    if(!roomData || roomData.status!=="playing") return;
+    const remain = (roomData.phaseEndTime||Date.now()) - Date.now();
+    el("ph-timer").textContent = fmtTime(remain);
+    if(isHost && remain <= 0){ maybeAdvancePhase(); }
+  }, 1000);
+}
+
+// ---------- 夜アクションUI ----------
+function renderNightAction(me){
+  const role = me.role;
+  const players = roomData.players||{};
+  const aliveOthers = Object.keys(players).filter(u=>players[u].alive && u!==myUid);
+  const already = (roomData.nightActions && roomData.nightActions[myUid]);
+
+  if(!["wolf","seer","hunter"].includes(role)){
+    // 妖狐/村人/狂人/霊媒師は夜に選択行動なし
+    hide("night-action-card");
+    return;
+  }
+  show("night-action-card");
+  el("na-title").textContent = role==="wolf" ? "獲物を選べ" : role==="seer" ? "占う相手を選べ" : "守る相手を選べ";
+  el("na-hint").textContent = role==="wolf" ? "他の人狼と結果が割れた場合、最多票の相手が襲撃される。" :
+    role==="seer" ? "その者が人狼か否か、朝に真実が示される。" :
+    "その者を今宵の凶刃から守る。自分自身は選べない。";
+
+  const targets = role==="hunter" ? aliveOthers : aliveOthers; // wolves target any alive non-self incl other wolves technically excluded below
+  const finalTargets = role==="wolf" ? aliveOthers.filter(u=>players[u].role!=="wolf") : aliveOthers;
+
+  el("na-targets").innerHTML = finalTargets.map(u=>{
+    const p = players[u];
+    return `<div class="player-chip selectable ${chosenTarget===u?'chosen':''}" data-uid="${u}"><div class="nm">${escapeHtml(p.name)}</div></div>`;
+  }).join("");
+  document.querySelectorAll("#na-targets .player-chip").forEach(c=>{
+    c.onclick = ()=>{ chosenTarget = c.getAttribute("data-uid"); el("na-confirm").disabled=false; renderNightAction(me); };
+  });
+  el("na-status").textContent = already ? "選択を送信済み。夜明けを待て……" : "";
+  el("na-confirm").disabled = !chosenTarget || !!already;
+}
+el("na-confirm").onclick = async ()=>{
+  if(!chosenTarget) return;
+  await roomRef.child(`nightActions/${myUid}`).set({ target: chosenTarget, role: roomData.players[myUid].role });
+  el("na-status").textContent = "選択を送信済み。夜明けを待て……";
+};
+
+// ---------- 投票UI ----------
+function renderVote(me){
+  const players = roomData.players||{};
+  const aliveOthers = Object.keys(players).filter(u=>players[u].alive);
+  const already = (roomData.votes && roomData.votes[myUid]);
+  show("vote-card");
+  el("vote-targets").innerHTML = aliveOthers.map(u=>{
+    const p = players[u];
+    return `<div class="player-chip selectable ${votedTarget===u?'chosen':''} ${u===myUid?'me':''}" data-uid="${u}"><div class="nm">${escapeHtml(p.name)}</div></div>`;
+  }).join("");
+  document.querySelectorAll("#vote-targets .player-chip").forEach(c=>{
+    c.onclick = ()=>{ votedTarget = c.getAttribute("data-uid"); el("vote-confirm").disabled=false; renderVote(me); };
+  });
+  el("vote-status").textContent = already ? "投票済み。開票を待て……" : "";
+  el("vote-confirm").disabled = !votedTarget || !!already;
+}
+el("vote-confirm").onclick = async ()=>{
+  if(!votedTarget) return;
+  await roomRef.child(`votes/${myUid}`).set(votedTarget);
+  el("vote-status").textContent = "投票済み。開票を待て……";
+};
+
+// ---------- チャット ----------
+function renderChat(){
+  const chat = roomData.chat || {};
+  const players = roomData.players || {};
+  const msgs = Object.values(chat).sort((a,b)=>a.ts-b.ts);
+  el("chat-msgs").innerHTML = msgs.map(m=>{
+    const dead = players[m.uid] && !players[m.uid].alive;
+    return `<div class="msg ${dead?'dead-msg':''}"><span class="who">${escapeHtml(m.name)}${dead?'(亡霊)':''}:</span>${escapeHtml(m.text)}</div>`;
+  }).join("");
+  el("chat-msgs").scrollTop = el("chat-msgs").scrollHeight;
+
+  const me = players[myUid]||{};
+  const canChat = roomData.phase==="day" || !me.alive; // 死者は常時ざわめける(亡霊チャット)
+  el("chat-text").disabled = !canChat;
+  el("chat-send").disabled = !canChat;
+}
+el("chat-send").onclick = sendChat;
+el("chat-text").addEventListener("keydown", e=>{ if(e.key==="Enter") sendChat(); });
+async function sendChat(){
+  const text = el("chat-text").value.trim();
+  if(!text) return;
+  const me = roomData.players[myUid];
+  await roomRef.child("chat").push({ uid: myUid, name: me.name, text, ts: firebase.database.ServerValue.TIMESTAMP });
+  el("chat-text").value="";
+}
+
+// ---------- ログ ----------
+function renderLog(){
+  const log = roomData.log || {};
+  const entries = Object.values(log).sort((a,b)=>(a.ts||0)-(b.ts||0));
+  el("game-log").innerHTML = entries.map(e=>`<p class="${e.type==='death'?'death':'sys'}">${escapeHtml(e.text)}</p>`).join("");
+  el("game-log").scrollTop = el("game-log").scrollHeight;
+}
+
+// ---------- ホスト専用: フェーズ進行の解決 ----------
+async function maybeAdvancePhase(){
+  // ロック取得(競合防止)
+  const lockRef = roomRef.child("lock");
+  const txResult = await lockRef.transaction(cur=>{
+    if(cur && Date.now()-cur < 4000) return; // 直近処理中なら中断
+    return Date.now();
+  });
+  if(!txResult.committed) return;
+
+  const remain = (roomData.phaseEndTime||0) - Date.now();
+  if(remain > 0) return;
+
+  const phase = roomData.phase;
+  if(phase==="day"){ await goToVote(); }
+  else if(phase==="vote"){ await resolveVote(); }
+  else if(phase==="night"){ await resolveNight(); }
+}
+
+async function goToVote(){
+  await roomRef.update({ phase:"vote", phaseEndTime: Date.now()+VOTE_MS, votes:null });
+  await roomRef.child("log").push({ text:"議論は終わった。処刑の投票を始める。", ts:Date.now(), type:"sys" });
+}
+
+async function resolveVote(){
+  const players = roomData.players||{};
+  const votes = roomData.votes||{};
+  const tally = {};
+  Object.values(votes).forEach(t=>{ tally[t]=(tally[t]||0)+1; });
+  let executed = null, max=-1, tie=false;
+  Object.entries(tally).forEach(([uid,c])=>{ if(c>max){max=c; executed=uid; tie=false;} else if(c===max){tie=true;} });
+  const updates = {};
+  let logText;
+  if(executed && !tie){
+    updates[`players/${executed}/alive`] = false;
+    const p = players[executed];
+    logText = `村人たちは ${p.name} を処刑した。彼(彼女)は【${ROLES[p.role].name}】であった。`;
+    // 妖狐が処刑された場合は妖狐死亡として扱う(通常ルール通り、占いでのみ死ぬ変種もあるが処刑死も可とする)
+  } else {
+    logText = "票が割れ、処刑は行われなかった。";
+  }
+  await roomRef.child("log").push({ text: logText, ts: Date.now(), type: executed?"death":"sys" });
+
+  const winCheck = checkWin({...players, ...(executed?{[executed]:{...players[executed], alive:false}}:{}) });
+  if(winCheck){
+    await roomRef.update({ ...updates, status:"ended", winner:winCheck, phaseEndTime: Date.now()+RESULT_MS });
+    return;
+  }
+  await roomRef.update({ ...updates, phase:"night", day: (roomData.day||1), phaseEndTime: Date.now()+NIGHT_MS, nightActions:null });
+  await roomRef.child("log").push({ text:"夜が訪れた。村は静寂に包まれる……", ts:Date.now(), type:"sys" });
+}
+
+async function resolveNight(){
+  const players = JSON.parse(JSON.stringify(roomData.players||{}));
+  const actions = roomData.nightActions||{};
+  let wolfTargetTally = {}, seerResult=null, hunterProtect=null, seerUid=null;
+
+  Object.entries(actions).forEach(([uid,a])=>{
+    if(a.role==="wolf"){ wolfTargetTally[a.target]=(wolfTargetTally[a.target]||0)+1; }
+    if(a.role==="seer"){ seerResult = a.target; seerUid = uid; }
+    if(a.role==="hunter"){ hunterProtect = a.target; }
+  });
+
+  let wolfTarget=null, max=-1;
+  Object.entries(wolfTargetTally).forEach(([uid,c])=>{ if(c>max){max=c; wolfTarget=uid;} });
+
+  const logs = [];
+  // 占い結果
+  if(seerResult && players[seerResult]){
+    const targetRole = players[seerResult].role;
+    const isWolf = targetRole==="wolf";
+    const isFox = targetRole==="fox";
+    logs.push({ text:`占いの結果、${players[seerResult].name} は【${isWolf?"人狼":"人狼ではない"}】であった。`, type:"sys" });
+    if(isFox){
+      players[seerResult].alive = false;
+      logs.push({ text:`しかし呪いが顕現し、${players[seerResult].name}(妖狐)は息絶えた……。`, type:"death" });
+    }
+  }
+  // 人狼の襲撃
+  if(wolfTarget && players[wolfTarget] && players[wolfTarget].alive){
+    const isFoxTarget = players[wolfTarget].role==="fox";
+    const isProtected = (wolfTarget === hunterProtect);
+    if(isFoxTarget){
+      logs.push({ text:`人狼は${players[wolfTarget].name}に牙を立てたが、妖しい気配に阻まれ何も起きなかった。`, type:"sys" });
+    } else if(isProtected){
+      logs.push({ text:`何者かが${players[wolfTarget].name}を守り抜いた。今宵、犠牲者はいない。`, type:"sys" });
+    } else {
+      players[wolfTarget].alive = false;
+      logs.push({ text:`朝、${players[wolfTarget].name}が骸となって発見された……。`, type:"death" });
+    }
+  } else if(!wolfTarget){
+    logs.push({ text:"人狼は牙を研がなかった。静かな夜が明ける。", type:"sys" });
+  }
+
+  const winCheck = checkWin(players);
+  const logUpdates = {};
+  logs.forEach((l,i)=>{ logUpdates[`log/n${roomData.day}_${i}`] = { ...l, ts: Date.now() }; });
+
+  if(winCheck){
+    await roomRef.update({ players, ...logUpdates, status:"ended", winner:winCheck, phaseEndTime: Date.now()+RESULT_MS });
+    return;
+  }
+
+  await roomRef.update({
+    players, ...logUpdates,
+    phase:"day", day:(roomData.day||1)+1,
+    phaseEndTime: Date.now()+DAY_MS,
+    nightActions:null, votes:null
+  });
+}
+
+function checkWin(players){
+  const alive = Object.values(players).filter(p=>p.alive);
+  const wolves = alive.filter(p=>p.role==="wolf").length;
+  const fox = alive.filter(p=>p.role==="fox").length;
+  const others = alive.filter(p=>p.role!=="wolf" && p.role!=="fox").length; // village+madman(狂人はwolf team扱いだが襲撃対象)
+  // 狂人は人狼陣営だが村人としてカウントされ生存者数に混ざる -> 人狼陣営勝利条件では「人狼(狼职)」の数のみで判定し、
+  // 村勝利条件は「人狼が0」であること。
+  if(wolves===0){
+    return fox>0 ? "fox" : "village";
+  }
+  if(wolves >= others){
+    return "wolf";
+  }
+  return null;
+}
+
+// ---------- 結果画面 ----------
+function renderResult(){
+  const winner = roomData.winner;
+  const map = { village:["村人陣営の勝利","人狼は退治され、村に平穏が戻った。"], wolf:["人狼陣営の勝利","夜の闇が村を呑み込んだ。"], fox:["妖狐の独り勝ち","人狼も村人も気づかぬ間に、狐だけが笑っていた。"] };
+  el("result-team").textContent = map[winner] ? map[winner][0] : "決着";
+  el("result-desc").textContent = map[winner] ? map[winner][1] : "";
+  const players = roomData.players||{};
+  el("result-players").innerHTML = Object.values(players).map(p=>{
+    const r = ROLES[p.role]||{name:"?",team:"village"};
+    return `<div class="player-chip ${p.alive?'':'dead'}"><div class="nm">${escapeHtml(p.name)}</div><div class="tag">${r.name}</div></div>`;
+  }).join("");
+}
+el("btn-back-lobby").onclick = async ()=>{
+  if(!isHost) return;
+  const players = roomData.players||{};
+  const resetPlayers = {};
+  Object.entries(players).forEach(([uid,p])=>{ resetPlayers[uid] = { name:p.name, alive:true }; });
+  await roomRef.update({ status:"lobby", phase:"lobby", players: resetPlayers, log:null, chat:null, nightActions:null, votes:null, winner:null, day:0 });
+};
+
+function escapeHtml(s){
+  return String(s).replace(/[&<>"']/g, c=>({ '&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;' }[c]));
+}
+</script>
+</body>
+</html>
